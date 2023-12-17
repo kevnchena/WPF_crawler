@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,6 +26,8 @@ namespace WPF_crawler
         string defaultURL = "https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=e8dd42e6-9b8b-43f8-991e-b3dee723a52d&limit=1000&sort=ImportDate%20desc&format=JSON";
         
         AQIdata aqidata = new AQIdata();
+        List<Field> fields = new List<Field>();
+        List<Record> records = new List<Record>(); 
         public MainWindow()
         {
             InitializeComponent();
@@ -35,22 +39,34 @@ namespace WPF_crawler
             string url = UrlTextBox.Text;
             ContentTextBox.Text = "正在抓取網路資料...";
 
-            string data = await GetWebContent(url);
+            string data = await FetchContentAsync(url);
+            ContentTextBox.Text= data;
+            aqidata=JsonSerializer.Deserialize<AQIdata>(data);
+            fields=aqidata.fields.ToList();
+            records=aqidata.records.ToList();
+            statusTextBlock.Text = $"共有{records.Count}筆資料";
         }
 
-        private async Task<string> GetWebContent(string url)
+        private async Task<string> FetchContentAsync(string url)
         {
-            //try
-            //{
-                using (HttpClient client = new HttpClient())
+            using (var client = new HttpClient())
+            {
+                client.Timeout=TimeSpan.FromSeconds(200);//設定超時200
+
+                try
                 {
                     return await client.GetStringAsync(url);
                 }
-            //}
-            //catch(Exception ex)
-            //{
-            //    ContentTextBox.Text = ex.Message;
-            //}
+                catch (TaskCanceledException ex)
+                {
+                    MessageBox.Show("請求超時或被取消");
+                    throw;
+                } catch (Exception ex)
+                {
+                    MessageBox.Show($"讀取數據時發生錯誤{ex.Message}");
+                    throw;
+                }
+            }
         }
     }
 }
