@@ -15,6 +15,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using LiveCharts;
+using LiveCharts.Wpf;
 
 namespace WPF_crawler
 {
@@ -45,12 +47,38 @@ namespace WPF_crawler
             fields=aqidata.fields.ToList();
             records=aqidata.records.ToList();
             statusTextBlock.Text = $"共有{records.Count}筆資料";
-            displayAQIData();
+            DisplayAQIData();
         }
 
-        private void displayAQIData()
+        private void DisplayAQIData()
         {
             RecordDataGrid.ItemsSource= records;
+
+            Record record = records[0];
+            DataWrapPanel.Children.Clear();
+
+            foreach (Field field in fields)
+            {
+                var propertyInfo = record.GetType().GetProperty(field.id);
+                if(propertyInfo != null )
+                {
+                    var value = propertyInfo.GetValue(record)as string;
+                    if(double.TryParse(value, out double v))
+                    {
+                        CheckBox cb = new CheckBox
+                        {
+                            Content = field.info.label,
+                            Tag = field.id,
+                            Margin = new Thickness(3),
+                            FontSize = 14,
+                            FontWeight=FontWeights.Bold,
+                            Width = 100
+
+                        };
+                        DataWrapPanel.Children.Add(cb);
+                    }
+                }
+            }
         }
 
         private async Task<string> FetchContentAsync(string url)
