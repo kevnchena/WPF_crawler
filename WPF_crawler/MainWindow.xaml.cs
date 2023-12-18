@@ -29,11 +29,14 @@ namespace WPF_crawler
         
         AQIdata aqidata = new AQIdata();
         List<Field> fields = new List<Field>();
-        List<Record> records = new List<Record>(); 
+        List<Record> records = new List<Record>();
+        SeriesCollection seriescollection = new SeriesCollection();
+        List<Record> selectedRecords = new List<Record>();
         public MainWindow()
         {
             InitializeComponent();
             UrlTextBox.Text = defaultURL;
+            selectedRecords.Clear();
         }
 
         private async void fetchButton_Click(object sender, RoutedEventArgs e)
@@ -46,6 +49,7 @@ namespace WPF_crawler
             aqidata=JsonSerializer.Deserialize<AQIdata>(data);
             fields=aqidata.fields.ToList();
             records=aqidata.records.ToList();
+            selectedRecords=selectedRecords.ToList();
             statusTextBlock.Text = $"共有{records.Count}筆資料";
             DisplayAQIData();
         }
@@ -75,12 +79,49 @@ namespace WPF_crawler
                             Width = 100
 
                         };
+                        cb.Checked += UpdateChart;
+                        cb.Unchecked += UpdateChart;
                         DataWrapPanel.Children.Add(cb);
                     }
                 }
             }
         }
 
+        private void UpdateChart(object sender, EventArgs e)
+        {
+            seriescollection.Clear();
+
+            foreach (CheckBox cb in DataWrapPanel.Children)
+            {
+                if (cb.IsChecked == true)
+                {
+                    List<string> labels = new List<string>();
+                    String tag = cb.Tag as String;
+                    ColumnSeries columnSeries = new ColumnSeries();
+                    ChartValues<double> values = new ChartValues<double>();
+
+                    foreach (Record record in selectedRecords)
+                    {
+                        var propertyInfo = record.GetType().GetProperty(tag);
+                        if (propertyInfo != null)
+                        {
+                            var value = propertyInfo.GetValue(record) as string;
+                            if (double.TryParse(value, out double v))
+                            {
+                                values.Add(v);
+                                labels.Add(record.sitename);
+                            }
+                        }
+                    }
+                columnSeries.Values=values;
+                columnSeries.Title = tag;
+                columnSeries.LabelPoint = point => $"{labels[(int)point.X]}:{point.Y.ToString()}";
+                seriescollection.Add(columnSeries);
+
+                }
+                AQIChart.Series = seriescollection;
+            }
+        }
         private async Task<string> FetchContentAsync(string url)
         {
             using (var client = new HttpClient())
@@ -101,6 +142,17 @@ namespace WPF_crawler
                     throw;
                 }
             }
+        }
+
+        private void RecordDataGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+        {
+            e.Row.Header = (e.Row.GetIndex() +1).ToString();
+        }
+
+        private void RecordDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            selectedRecords = RecordDataGrid.SelectedItems.Cast<Record>().ToList();
+            statusTextBlock.Text = $"總共選取{selectedRecords.Count()}筆記錄";
         }
     }
 }
