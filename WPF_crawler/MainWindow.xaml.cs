@@ -45,6 +45,12 @@ namespace WPF_crawler
             fields=aqidata.fields.ToList();
             records=aqidata.records.ToList();
             statusTextBlock.Text = $"共有{records.Count}筆資料";
+            displayAQIData();
+        }
+
+        private void displayAQIData()
+        {
+            RecordDataGrid.ItemsSource= records;
         }
 
         private async Task<string> FetchContentAsync(string url)
